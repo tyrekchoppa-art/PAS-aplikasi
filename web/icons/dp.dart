@@ -288,3 +288,210 @@ class CheckoutPage extends StatelessWidget {
     );
   }
 }
+
+asdmakdmak
+import 'dart:convert';
+
+MakananModel makananModelFromJson(String str) => MakananModel.fromJson(json.decode(str));
+
+class MakananModel {
+  final List<Recipe> recipes;
+
+  MakananModel({required this.recipes});
+
+  factory MakananModel.fromJson(Map<String, dynamic> json) => MakananModel(
+        recipes: List<Recipe>.from(json["recipes"].map((x) => Recipe.fromJson(x))),
+      );
+}
+
+class Recipe {
+  final int id;
+  final String name;
+  final List<String> ingredients;
+  final List<String> instructions;
+  final int caloriesPerServing;
+  final String cuisine;
+  final String image;
+  final double rating;
+
+  Recipe({
+    required this.id,
+    required this.name,
+    required this.ingredients,
+    required this.instructions,
+    required this.caloriesPerServing,
+    required this.cuisine,
+    required this.image,
+    required this.rating,
+  });
+
+  factory Recipe.fromJson(Map<String, dynamic> json) => Recipe(
+        id: json["id"],
+        name: json["name"],
+        ingredients: List<String>.from(json["ingredients"].map((x) => x)),
+        instructions: List<String>.from(json["instructions"].map((x) => x)),
+        caloriesPerServing: json["caloriesPerServing"],
+        cuisine: json["cuisine"],
+        image: json["image"],
+        rating: (json["rating"] as num).toDouble(),
+      );
+}
+asdasdjn 
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:belajarflutter/Controller/listmakanan_controller.dart';
+import 'package:belajarflutter/pages/detail_makanan_page.dart';
+import 'package:belajarflutter/pages/checkout_page.dart';
+
+class ListmakananPage extends StatelessWidget {
+  ListmakananPage({super.key});
+
+  // Daftarkan controller pertama kali di sini
+  final ListMakananController controller = Get.put(ListMakananController());
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Daftar Menu"),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+        actions: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart),
+                onPressed: () => Get.to(() => CheckoutPage()),
+              ),
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Obx(() {
+                  if (controller.keranjang.isEmpty) return const SizedBox();
+                  return Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      "${controller.keranjang.length}",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ],
+      ),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return ListView.builder(
+          itemCount: controller.listMakanan.length,
+          itemBuilder: (context, index) {
+            final makanan = controller.listMakanan[index];
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: ListTile(
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    makanan.image,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                title: Text(
+                  makanan.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text("Rp ${makanan.caloriesPerServing * 100} • ⭐ ${makanan.rating}"),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Get.to(() => const DetailMakananPage(), arguments: makanan);
+                },
+              ),
+            );
+          },
+        );
+      }),
+    );
+  }
+}
+
+
+askasdmkasm
+
+import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
+import 'package:belajarflutter/models/listmakanan_model.dart';
+
+class ListMakananController extends GetxController {
+  var listMakanan = <Recipe>[].obs;
+  var isLoading = true.obs;
+  var keranjang = <Recipe>[].obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    getMakanan();
+  }
+
+  void getMakanan() async {
+    try {
+      isLoading.value = true;
+      final response = await http.get(Uri.parse('https://dummyjson.com/recipes'));
+
+      if (response.statusCode == 200) {
+        final result = makananModelFromJson(response.body);
+        listMakanan.assignAll(result.recipes);
+      }
+    } catch (e) {
+      print("Error: $e");
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  void tambahKeKeranjang(Recipe makanan) {
+    keranjang.add(makanan);
+    Get.snackbar("Berhasil", "${makanan.name} masuk keranjang");
+  }
+
+  void hapusDariKeranjang(int index) {
+    keranjang.removeAt(index);
+  }
+
+  double get subtotal {
+    double total = 0;
+    for (var item in keranjang) {
+      total += (item.caloriesPerServing * 100);
+    }
+    return total;
+  }
+
+  double get diskon {
+    if (subtotal > 50000) {
+      return subtotal * 0.10;
+    }
+    return 0;
+  }
+
+  double get pajak {
+    return (subtotal - diskon) * 0.11;
+  }
+
+  double get totalBayar {
+    return (subtotal - diskon) + pajak;
+  }
+}
